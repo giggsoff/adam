@@ -75,6 +75,17 @@ func (s *Server) Start() {
 	ed.HandleFunc("/metrics", api.metrics).Methods("POST")
 	ed.HandleFunc("/logs", api.logs).Methods("POST")
 
+	edv2 := router.PathPrefix("/api/v2/edgedevice").Subrouter()
+	edv2.Use(ensureMTLS)
+	edv2.Use(logRequest)
+	edv2.HandleFunc("/register", api.register).Methods("POST")
+	edv2.HandleFunc("/ping", api.ping).Methods("GET")
+	edv2.HandleFunc("/config", api.config).Methods("GET")
+	edv2.HandleFunc("/config", api.configPost).Methods("POST")
+	edv2.HandleFunc("/info", api.info).Methods("POST")
+	edv2.HandleFunc("/metrics", api.metrics).Methods("POST")
+	edv2.HandleFunc("/logs", api.logs).Methods("POST")
+
 	// admin endpoint - custom, used to manage adam
 	admin := &adminHandler{
 		manager:     s.DeviceManager,
