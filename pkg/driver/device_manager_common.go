@@ -13,13 +13,14 @@ import (
 )
 
 type deviceStorage struct {
-	cert    *x509.Certificate
-	info    []*info.ZInfoMsg
-	metrics []*metrics.ZMetricMsg
-	logs    []*logs.LogBundle
-	config  *config.EdgeDevConfig
-	serial  string
-	onboard *x509.Certificate
+	registered bool
+	cert       *x509.Certificate
+	info       []*info.ZInfoMsg
+	metrics    []*metrics.ZMetricMsg
+	logs       []*logs.LogBundle
+	config     *config.EdgeDevConfig
+	serial     string
+	onboard    *x509.Certificate
 }
 
 func createBaseConfig(u uuid.UUID) *config.EdgeDevConfig {

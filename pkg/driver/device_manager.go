@@ -36,6 +36,8 @@ type DeviceManager interface {
 	// SetCacheTimeout set how long to keep onboard and device certificates in cache before rereading from a backing store. Value of 0 means
 	//   not to cache
 	SetCacheTimeout(int)
+	// OnboardGetByHash get the details for an onboarding certificate and its serials by hash
+	OnboardGetByHash([]byte) (*x509.Certificate, []string, error)
 	// OnboardCheck check if a certificate+serial combination are valid to use for registration. Includes checking for duplicates in devices
 	OnboardCheck(*x509.Certificate, string) error
 	// OnboardRemove remove an onboarding cert
@@ -70,6 +72,8 @@ type DeviceManager interface {
 	GetConfig(uuid.UUID) (*config.EdgeDevConfig, error)
 	// SetConfig set the config for a given uuid
 	SetConfig(uuid.UUID, *config.EdgeDevConfig) error
+	// DevicePrepare get the config for a given uuid for v2 getUUID
+	DevicePrepare() (*config.ConfigResponse, error)
 	// GetConfig get the config for a given uuid
 	GetConfigResponse(uuid.UUID) (*config.ConfigResponse, error)
 	// GetLogsReader get the logs for a given uuid

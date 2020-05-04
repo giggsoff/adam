@@ -168,6 +168,16 @@ func (d *DeviceManagerMemory) DeviceList() ([]*uuid.UUID, error) {
 	return pids, nil
 }
 
+// DevicePrepare prepare new device for v2 getUUID
+func (d *DeviceManagerMemory) DevicePrepare() (*config.ConfigResponse, error) {
+	return nil, fmt.Errorf("not implemented now")
+}
+
+// OnboardGetByHash prepare new device for v2 getUUID
+func (d *DeviceManagerMemory) OnboardGetByHash(hash []byte) (*x509.Certificate, []string, error) {
+	return nil, nil, fmt.Errorf("not implemented now")
+}
+
 // DeviceRegister register a new device cert
 func (d *DeviceManagerMemory) DeviceRegister(cert, onboard *x509.Certificate, serial string) (*uuid.UUID, error) {
 	// first check if it already exists - this also checks for nil cert

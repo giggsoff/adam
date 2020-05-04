@@ -4,6 +4,7 @@
 package driver
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
@@ -14,6 +15,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -142,6 +144,68 @@ func (d *DeviceManagerFile) OnboardGet(cn string) (*x509.Certificate, []string, 
 	}
 	// done
 	return cert, strings.Fields(string(serial)), nil
+}
+
+// ComputeSha - Compute sha256 on data
+func ComputeSha(data []byte) []byte {
+	h := sha256.New()
+	h.Write(data)
+	hash := h.Sum(nil)
+	return hash
+}
+
+func ioReadDir(root string) ([]string, error) {
+	var files []string
+	fileInfo, err := ioutil.ReadDir(root)
+	if err != nil {
+		return files, err
+	}
+
+	for _, file := range fileInfo {
+		files = append(files, file.Name())
+	}
+	return files, nil
+}
+
+// OnboardGetByHash prepare new device for v2 getUUID
+func (d *DeviceManagerFile) OnboardGetByHash(hash []byte) (*x509.Certificate, []string, error) {
+	if len(hash) == 0 {
+		return nil, nil, fmt.Errorf("empty hash")
+	}
+
+	dirs, err := ioReadDir(filepath.Join(d.databasePath, onboardDir))
+	if err != nil {
+		return nil, nil, fmt.Errorf("ioReadDir: %v", err)
+	}
+	log.Println(dirs)
+	for _, cn := range dirs {
+		onboardDir := d.getOnboardPath(cn)
+		// does it exist?
+		found, err := exists(onboardDir)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error reading onboard directory: %v", err)
+		}
+		if !found {
+			return nil, nil, &NotFoundError{err: fmt.Sprintf("onboard directory not found %s", onboardDir)}
+		}
+		// get the certificate and serials
+		certPath := path.Join(onboardDir, onboardCertFilename)
+		cert, err := ax.ReadCert(certPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error reading onboard certificate at %s: %v", certPath, err)
+		}
+		serialPath := path.Join(onboardDir, onboardCertSerials)
+		serial, err := ioutil.ReadFile(serialPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error reading onboard serials at %s: %v", serialPath, err)
+		}
+		onboardCertHash := ComputeSha(cert.Raw)
+		if bytes.Compare(onboardCertHash, hash) == 0 {
+			return cert, strings.Fields(string(serial)), nil
+		}
+		log.Printf("hash: %08b", onboardCertHash)
+	}
+	return nil, nil, fmt.Errorf("not found cert with hash %08b", hash)
 }
 
 // OnboardList list all of the known Common Names for onboard
@@ -325,6 +389,48 @@ func (d *DeviceManagerFile) DeviceList() ([]*uuid.UUID, error) {
 		pids = append(pids, &ids[i])
 	}
 	return pids, nil
+}
+
+// DevicePrepare prepare new device for v2 getUUID
+func (d *DeviceManagerFile) DevicePrepare() (*config.ConfigResponse, error) {
+	// refresh certs from filesystem, if needed - includes checking if necessary based on timer
+	err := d.refreshCache()
+	if err != nil {
+		return nil, fmt.Errorf("unable to refresh certs from filesystem: %v", err)
+	}
+	// generate a new uuid
+	unew, err := uuid.NewV4()
+	if err != nil {
+		return nil, fmt.Errorf("error generating uuid for device: %v", err)
+	}
+
+	// create filesystem tree and subdirs for the new device
+	devicePath := d.getDevicePath(unew)
+	err = os.MkdirAll(devicePath, 0755)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new device tree %s: %v", devicePath, err)
+	}
+
+	// save the base configuration
+	err = d.writeProtobufToJSONFile(unew, "", deviceConfigFilename, createBaseConfig(unew))
+	if err != nil {
+		return nil, fmt.Errorf("error saving device config to %s: %v", deviceConfigFilename, err)
+	}
+
+	// create the necessary directories for data uploads
+	for _, p := range []string{logDir, metricsDir, infoDir} {
+		cur := path.Join(devicePath, p)
+		err = os.MkdirAll(cur, 0755)
+		if err != nil {
+			return nil, fmt.Errorf("error creating new device sub-path %s: %v", cur, err)
+		}
+	}
+
+	// save new one to cache - just the serial and onboard; the rest is on disk
+	d.devices[unew] = deviceStorage{
+		registered: false,
+	}
+	return d.GetConfigResponse(unew)
 }
 
 // DeviceRegister register a new device cert
@@ -888,7 +994,7 @@ func (d *DeviceManagerFile) GetLogsReader(u uuid.UUID) (io.Reader, error) {
 	}
 	deviceLogsDir := path.Join(d.getDevicePath(u), logDir)
 	dr := &DirReader{
-		Path: deviceLogsDir,
+		Path:     deviceLogsDir,
 		LineFeed: true,
 	}
 	return dr, nil
@@ -902,7 +1008,7 @@ func (d *DeviceManagerFile) GetInfoReader(u uuid.UUID) (io.Reader, error) {
 	}
 	deviceInfoDir := path.Join(d.getDevicePath(u), infoDir)
 	dr := &DirReader{
-		Path: deviceInfoDir,
+		Path:     deviceInfoDir,
 		LineFeed: true,
 	}
 	return dr, nil

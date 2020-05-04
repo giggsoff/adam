@@ -7,6 +7,9 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"github.com/lf-edge/eve/api/go/auth"
+	"github.com/lf-edge/eve/api/go/config"
+	"github.com/lf-edge/eve/api/go/evecommon"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -24,6 +27,11 @@ type apiHandler struct {
 	manager     driver.DeviceManager
 	logChannel  chan proto.Message
 	infoChannel chan proto.Message
+}
+
+func (h *apiHandler) certs(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%s requested certs", r.RemoteAddr)
+	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 }
 
 func (h *apiHandler) register(w http.ResponseWriter, r *http.Request) {
@@ -140,6 +148,81 @@ func (h *apiHandler) configPost(w http.ResponseWriter, r *http.Request) {
 	out, err := proto.Marshal(config)
 	if err != nil {
 		log.Printf("error converting config to byte message: %v", err)
+	}
+	w.Header().Add(contentType, mimeProto)
+	w.WriteHeader(http.StatusOK)
+	w.Write(out)
+}
+
+func (h *apiHandler) configPostV2(w http.ResponseWriter, r *http.Request) {
+	// only uses the device cert
+	cert := getClientCert(r)
+	u, err := h.manager.DeviceCheckCert(cert)
+	if err != nil {
+		log.Printf("error checking device cert: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	authContainer, err := getAuthContainer(r)
+	if err == nil {
+		log.Println(authContainer.String())
+		certReceived, serial, err := h.manager.OnboardGetByHash(authContainer.SenderCertHash)
+		if err != nil {
+			log.Printf("OnboardGetByHash err: %s", err)
+		} else {
+			log.Printf("OnboardGetByHash certReceived: %s", certReceived.Raw)
+			log.Printf("OnboardGetByHash serial: %s", serial)
+		}
+	} else {
+		log.Printf("getAuthContainer: %s", err)
+	}
+	var config *config.ConfigResponse
+	if u == nil {
+		log.Printf("unknown device cert v2")
+		config, err = h.manager.DevicePrepare()
+		if err != nil {
+			log.Printf("error DevicePrepare: %v", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		config, err = h.manager.GetConfigResponse(*u)
+		if err != nil {
+			log.Printf("error getting device config: %v", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+	}
+	configRequest, err := getClientConfigRequest(r)
+	if err != nil {
+		log.Printf("error getting config request: %v", err)
+	} else {
+		//compare received config hash with current
+		if strings.Compare(configRequest.ConfigHash, config.ConfigHash) == 0 {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+	}
+	data, err := proto.Marshal(config)
+	if err != nil {
+		log.Printf("error converting config to byte message: %v", err)
+	}
+	body := auth.AuthBody{
+		Payload: data,
+	}
+	sm := auth.AuthContainer{}
+	sm.AuthPayload = &body
+	/*sig, err := signAuthData(data, s.KeyPath)
+	if err != nil {
+		log.Printf("addAuthenticate: sign auth data error %v\n", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	sm.SignatureHash = sig*/
+	sm.Algo = evecommon.HashAlgorithm_HASH_ALGORITHM_SHA256_32BYTES
+	out, err := proto.Marshal(&sm)
+	if err != nil {
+		log.Printf("error converting AuthContainer to byte message: %v", err)
 	}
 	w.Header().Add(contentType, mimeProto)
 	w.WriteHeader(http.StatusOK)

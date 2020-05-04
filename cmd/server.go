@@ -11,13 +11,14 @@ import (
 	"os"
 	"path"
 
-	"github.com/spf13/cobra"
 	"github.com/lf-edge/adam/pkg/driver"
 	"github.com/lf-edge/adam/pkg/server"
+	"github.com/spf13/cobra"
 )
 
 const (
-	defaultPort        = "8080"
+	defaultPort        = "443"
+	defaultPortHTTP    = "80"
 	defaultIP          = "0.0.0.0"
 	defaultCertRefresh = 60
 )
@@ -26,6 +27,7 @@ var (
 	serverCert     string
 	serverKey      string
 	port           string
+	httpport       string
 	hostIP         string
 	clientCertPath string
 	certRefresh    int
@@ -83,6 +85,7 @@ var serverCmd = &cobra.Command{
 
 		s := &server.Server{
 			Port:          port,
+			HTTPPort:      httpport,
 			Address:       hostIP,
 			CertPath:      serverCert,
 			KeyPath:       serverKey,
@@ -94,7 +97,8 @@ var serverCmd = &cobra.Command{
 }
 
 func serverInit() {
-	serverCmd.Flags().StringVar(&port, "port", defaultPort, "port on which to listen")
+	serverCmd.Flags().StringVar(&port, "port", defaultPort, "port on which to listen tls")
+	serverCmd.Flags().StringVar(&httpport, "httpport", defaultPortHTTP, "port on which to listen http")
 	serverCmd.Flags().StringVar(&hostIP, "ip", defaultIP, "IP address on which to listen")
 	serverCmd.Flags().StringVar(&serverCert, "server-cert", path.Join(defaultDatabaseURL, serverCertFilename), "path to server certificate")
 	serverCmd.Flags().StringVar(&serverKey, "server-key", path.Join(defaultDatabaseURL, serverKeyFilename), "path to server key")
