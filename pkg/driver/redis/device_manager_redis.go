@@ -741,7 +741,24 @@ func (d *DeviceManager) refreshCache() error {
 		}
 		certStr := string(cert.Raw)
 		deviceCerts[certStr] = u
-		devices[u] = common.DeviceStorage{}
+		devices[u] = common.DeviceStorage{
+			Logs: &ManagedStream{
+				name:   deviceLogsStream + u.String(),
+				client: d.client,
+			},
+			Info: &ManagedStream{
+				name:   deviceInfoStream + u.String(),
+				client: d.client,
+			},
+			Metrics: &ManagedStream{
+				name:   deviceMetricsStream + u.String(),
+				client: d.client,
+			},
+			Requests: &ManagedStream{
+				name:   deviceRequestsStream + u.String(),
+				client: d.client,
+			},
+		}
 	}
 	// replace the existing device certificates
 	d.deviceCerts = deviceCerts
@@ -766,7 +783,24 @@ func (d *DeviceManager) refreshCache() error {
 			return fmt.Errorf("unable to convert data from file %s to device onboard certificate: %v", b, err)
 		}
 		if _, present := devices[u]; !present {
-			devices[u] = common.DeviceStorage{}
+			devices[u] = common.DeviceStorage{
+				Logs: &ManagedStream{
+					name:   deviceLogsStream + u.String(),
+					client: d.client,
+				},
+				Info: &ManagedStream{
+					name:   deviceInfoStream + u.String(),
+					client: d.client,
+				},
+				Metrics: &ManagedStream{
+					name:   deviceMetricsStream + u.String(),
+					client: d.client,
+				},
+				Requests: &ManagedStream{
+					name:   deviceRequestsStream + u.String(),
+					client: d.client,
+				},
+			}
 		}
 		devItem := devices[u]
 		devItem.Onboard = cert
@@ -786,7 +820,24 @@ func (d *DeviceManager) refreshCache() error {
 			return fmt.Errorf("unable to convert device uuid from Redis hash name %s: %v", u, err)
 		}
 		if _, present := devices[u]; !present {
-			devices[u] = common.DeviceStorage{}
+			devices[u] = common.DeviceStorage{
+				Logs: &ManagedStream{
+					name:   deviceLogsStream + u.String(),
+					client: d.client,
+				},
+				Info: &ManagedStream{
+					name:   deviceInfoStream + u.String(),
+					client: d.client,
+				},
+				Metrics: &ManagedStream{
+					name:   deviceMetricsStream + u.String(),
+					client: d.client,
+				},
+				Requests: &ManagedStream{
+					name:   deviceRequestsStream + u.String(),
+					client: d.client,
+				},
+			}
 		}
 		devItem := devices[u]
 		devItem.Serial = s
