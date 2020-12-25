@@ -223,16 +223,16 @@ func (h *adminHandler) deviceRemove(w http.ResponseWriter, r *http.Request) {
 	u := mux.Vars(r)["uuid"]
 	uid, err := uuid.FromString(u)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("uuid from string problem: %v", err), http.StatusBadRequest)
 		return
 	}
 	err = h.manager.DeviceRemove(&uid)
 	_, isNotFound := err.(*common.NotFoundError)
 	switch {
 	case err != nil && isNotFound:
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("not found: %v", err), http.StatusNotFound)
 	case err != nil:
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("error: %v", err), http.StatusBadRequest)
 	default:
 		w.WriteHeader(http.StatusOK)
 	}

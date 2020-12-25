@@ -280,7 +280,6 @@ func (d *DeviceManager) DeviceRemove(u *uuid.UUID) error {
 		{deviceLogsStream + k},
 		{deviceMetricsStream + k},
 		{deviceRequestsStream + k},
-		{deviceAppLogsStream + k + "_*"},
 	})
 
 	if err != nil {
@@ -307,8 +306,7 @@ func (d *DeviceManager) DeviceClear() error {
 			[]string{deviceMetricsStream + u.String()},
 			[]string{deviceLogsStream + u.String()},
 			[]string{deviceInfoStream + u.String()},
-			[]string{deviceRequestsStream + u.String()},
-			[]string{deviceAppLogsStream + u.String() + "_*"})
+			[]string{deviceRequestsStream + u.String()})
 
 	}
 
