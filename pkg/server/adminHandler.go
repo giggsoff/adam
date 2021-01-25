@@ -18,7 +18,7 @@ import (
 	"github.com/lf-edge/adam/pkg/driver"
 	"github.com/lf-edge/adam/pkg/driver/common"
 	ax "github.com/lf-edge/adam/pkg/x509"
-	"github.com/lf-edge/eve/api/go/config"
+	"github.com/giggsoff/eve/api/go/config"
 	uuid "github.com/satori/go.uuid"
 	"google.golang.org/protobuf/encoding/protojson"
 )

@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/lf-edge/eve/api/go/config"
-	"github.com/lf-edge/eve/api/go/logs"
+	"github.com/giggsoff/eve/api/go/config"
+	"github.com/giggsoff/eve/api/go/logs"
 
 	uuid "github.com/satori/go.uuid"
 	"google.golang.org/protobuf/encoding/protojson"
